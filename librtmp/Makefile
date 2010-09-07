@@ -64,22 +64,11 @@ SO_LDFLAGS=$(SO_LDFLAGS_$(SYS))
 # make[1]: *** [librtmp.so.0] Error 1
 # make: *** [librtmp/librtmp.a] Error 2
 #
-# http://lists.apple.com/archives/unix-porting/2003/Oct/msg00032.html
+# Meh, nevermind, I didn't read the README:
 #
-#  states that this:
+#  $ make SYS=darwin
 #
-# $(CXX) -Wl,-soname,$(@F) -shared -o $$libdir/$(@F) *.o
-#
-#  and this...
-#
-# $(CXX) -Wl,-soname,$(@F) -shared -o $$libdir/$(@F) \
-#        $(foreach dir,$(SUBLIBS),$(dir)/*.o);
-#
-#  under OS X be replaced with something like:
-#
-# $(CXX) -Wl,-dylib_install_name -Wl,$(@F) -o $$libdir/$(@F) *.o
-# $(CXX) -Wl,-dylib_install_name -Wl,$(@F) -o $$libdir/$(@F) \
-#        $(foreach dir,$(SUBLIBS),$(dir)/*.o);
+# for MacOSX
 
 SHARED=yes
 SODEF_yes=-fPIC
