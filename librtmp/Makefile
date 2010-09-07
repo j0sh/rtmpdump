@@ -56,6 +56,31 @@ SO_LDFLAGS_darwin=-dynamiclib -flat_namespace -undefined suppress -fno-common \
 SO_LDFLAGS_mingw=
 SO_LDFLAGS=$(SO_LDFLAGS_$(SYS))
 
+# Under OS X this happens:
+#
+# gcc -dynamiclib -Wl,-soname,librtmp.so.0  -o librtmp.so.0 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz 
+# ld: unknown option: -soname
+# collect2: ld returned 1 exit status
+# make[1]: *** [librtmp.so.0] Error 1
+# make: *** [librtmp/librtmp.a] Error 2
+#
+# http://lists.apple.com/archives/unix-porting/2003/Oct/msg00032.html
+#
+#  states that this:
+#
+# $(CXX) -Wl,-soname,$(@F) -shared -o $$libdir/$(@F) *.o
+#
+#  and this...
+#
+# $(CXX) -Wl,-soname,$(@F) -shared -o $$libdir/$(@F) \
+#        $(foreach dir,$(SUBLIBS),$(dir)/*.o);
+#
+#  under OS X be replaced with something like:
+#
+# $(CXX) -Wl,-dylib_install_name -Wl,$(@F) -o $$libdir/$(@F) *.o
+# $(CXX) -Wl,-dylib_install_name -Wl,$(@F) -o $$libdir/$(@F) \
+#        $(foreach dir,$(SUBLIBS),$(dir)/*.o);
+
 SHARED=yes
 SODEF_yes=-fPIC
 SOLIB_yes=librtmp.$(SO_EXT)
