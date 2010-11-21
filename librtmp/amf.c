@@ -1125,7 +1125,7 @@ AMF_GetProp(AMFObject *obj, const AVal *name, int nIndex)
 {
   if (nIndex >= 0)
     {
-      if (nIndex <= obj->o_num)
+      if (nIndex < obj->o_num)
 	return &obj->o_props[nIndex];
     }
   else
