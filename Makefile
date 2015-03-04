@@ -15,6 +15,7 @@ LIBZ=-lz
 LIB_GNUTLS=-lgnutls -lhogweed -lnettle -lgmp $(LIBZ)
 LIB_OPENSSL=-lssl -lcrypto $(LIBZ)
 LIB_POLARSSL=-lpolarssl $(LIBZ)
+LIB_SECURETRANSPORT=-framework Security $(LIBZ)
 CRYPTO_LIB=$(LIB_$(CRYPTO))
 DEF_=-DNO_CRYPTO
 CRYPTO_DEF=$(DEF_$(CRYPTO))

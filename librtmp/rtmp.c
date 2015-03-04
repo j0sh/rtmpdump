@@ -64,6 +64,8 @@ static const char *my_dhm_G = "4";
 #include <openssl/buffer.h>
 #endif
 TLS_CTX RTMP_TLS_ctx;
+#elif defined(USE_SSL)
+TLS_CTX RTMP_TLS_ctx;
 #endif
 
 #define RTMP_SIG_SIZE 1536
@@ -973,7 +975,7 @@ RTMP_Connect1(RTMP *r, RTMPPacket *cp)
 {
   if (r->Link.protocol & RTMP_FEATURE_SSL)
     {
-#if defined(CRYPTO) && !defined(NO_SSL)
+#if (defined(CRYPTO) && !defined(NO_SSL)) || defined(USE_SSL)
       TLS_client(RTMP_TLS_ctx, r->m_sb.sb_ssl);
       TLS_setfd(r->m_sb.sb_ssl, r->m_sb.sb_socket);
       if (TLS_connect(r->m_sb.sb_ssl) < 0)
@@ -4271,7 +4273,7 @@ RTMPSockBuf_Fill(RTMPSockBuf *sb)
   while (1)
     {
       nBytes = sizeof(sb->sb_buf) - 1 - sb->sb_size - (sb->sb_start - sb->sb_buf);
-#if defined(CRYPTO) && !defined(NO_SSL)
+#if (defined(CRYPTO) && !defined(NO_SSL)) || defined(USE_SSL)
       if (sb->sb_ssl)
 	{
 	  nBytes = TLS_read(sb->sb_ssl, sb->sb_start + sb->sb_size, nBytes);
@@ -4314,7 +4316,7 @@ RTMPSockBuf_Send(RTMPSockBuf *sb, const char *buf, int len)
   fwrite(buf, 1, len, netstackdump);
 #endif
 
-#if defined(CRYPTO) && !defined(NO_SSL)
+#if (defined(CRYPTO) && !defined(NO_SSL)) || defined(USE_SSL)
   if (sb->sb_ssl)
     {
       rc = TLS_write(sb->sb_ssl, buf, len);
@@ -4330,7 +4332,7 @@ RTMPSockBuf_Send(RTMPSockBuf *sb, const char *buf, int len)
 int
 RTMPSockBuf_Close(RTMPSockBuf *sb)
 {
-#if defined(CRYPTO) && !defined(NO_SSL)
+#if (defined(CRYPTO) && !defined(NO_SSL)) || defined(USE_SSL)
   if (sb->sb_ssl)
     {
       TLS_shutdown(sb->sb_ssl);
