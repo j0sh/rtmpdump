@@ -126,62 +126,9 @@ typedef struct tls_ctx {
 #elif defined(USE_SECURETRANSPORT)
 #include <Security/Security.h>
 #include <Security/SecureTransport.h>
-static OSStatus st_read(SSLConnectionRef cxn, void *data, size_t *dataLength)
-{
-    int fd = (int)cxn, totalRead = 0, toRead = *dataLength;
-    while (toRead > 0) {
-        int ret = read(fd, data, toRead);
-        printf("SecureTransport st_read %lu ret %d\n", *dataLength, ret);
-        if (ret <= 0) {
-            switch (ret) {
-            case 0: return errSecIO; // EOF
-            case ECONNRESET: return errSSLClosedAbort;
-            case EAGAIN: return errSSLWouldBlock;
-            default: {
-                char err[64];
-                strerror_r(err, sizeof(err), errno);
-                fprintf(stderr, "Unknown return %d: %s\n", ret, err);
-            }
-            }
-        }
-        totalRead += ret;
-        data += ret;
-        toRead -= ret;
-    }
-    *dataLength = totalRead;
-    return errSecSuccess;
-}
-static OSStatus st_write(SSLConnectionRef cxn, const void *data, size_t *dataLength)
-{
-    int fd = (int)cxn;
-    int ret = write(fd, data, *dataLength);
-    *dataLength = ret;
-    if (ret <= 0) return ret;
-    return noErr;
-}
-static void st_io(SSLContextRef ssl, int fd)
-{
-    OSStatus r1 = SSLSetIOFuncs(ssl, st_read, st_write);
-    OSStatus r2 = SSLSetConnection(ssl, (SSLConnectionRef)(intptr_t)fd);
-    if (r1 != noErr || r2 != noErr) printf("Unable to set IO for SSL\n");
-}
-static size_t st_ssl_read(SSLContextRef ssl, void *data, size_t len)
-{
-    size_t processed;
-    OSErr ret = SSLRead(ssl, data, len, &processed);
-    printf("st_ssl_read: %lu bytes returning %d\n", len, ret);
-    if (noErr != ret) return ret;
-    return processed;
-}
-static size_t st_ssl_write(SSLContextRef ssl, const char *data, size_t len)
-{
-    size_t processed;
-    OSErr ret = SSLWrite(ssl, data, len, &processed);
-    printf("st_ssl_write: %lu bytes returning %d\n", len, ret);
-    if (noErr != ret) return ret;
-    if (noErr != ret) return ret;
-    return processed;
-}
+void st_io(SSLContextRef ssl, int fd);
+size_t st_ssl_read(SSLContextRef ssl, void *data, size_t len);
+size_t st_ssl_write(SSLContextRef ssl, const char *data, size_t len);
 #define TLS_CTX SSLContextRef
 #define TLS_client(ctx, s) (s) = SSLCreateContext(NULL, kSSLClientSide, kSSLStreamType)
 #define TLS_server(ctx, s)

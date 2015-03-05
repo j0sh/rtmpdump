@@ -152,6 +152,94 @@ static int clk_tck;
 #include "handshake.h"
 #endif
 
+#ifdef USE_SECURETRANSPORT
+static OSStatus st_read(SSLConnectionRef cxn, void *data, size_t *dataLength)
+{
+    int fd = (int)cxn, totalRead = 0, toRead = *dataLength;
+    *dataLength = 0;
+    while (toRead > 0) {
+        int ret = read(fd, data, toRead);
+        printf("SecureTransport st_read %d ret %d\n", toRead, ret);
+        if (ret <= 0) {
+            if (!ret) return errSecIO; // EOF
+            switch (errno) {
+            case ECONNRESET: return errSSLClosedAbort;
+            case EAGAIN: break; //return errSSLWouldBlock;
+            case EINTR: continue;
+            default: {
+                char err[64];
+                strerror_r(errno, err, sizeof(err));
+                fprintf(stderr, "Unknown return %d: %s\n", ret, err);
+            }
+            }
+        }
+        totalRead += ret;
+        data += ret;
+        toRead -= ret;
+    }
+    *dataLength = totalRead;
+    return errSecSuccess;
+}
+static OSStatus st_write(SSLConnectionRef cxn, const void *data, size_t *dataLength)
+{
+    int fd = (int)cxn;
+    int ret = write(fd, data, *dataLength);
+    *dataLength = ret;
+    if (ret > 0) return noErr;
+    if (!ret) return errSecIO; // EOF
+    switch (errno) {
+    default: {
+        char err[64];
+        strerror_r(errno, err, sizeof(err));
+        fprintf(stderr, "st_write: Unknown return %d -- %s\n", ret, err);
+    }
+    }
+    return noErr;
+}
+void st_io(SSLContextRef ssl, int fd)
+{
+    SSLSetSessionOption(ssl, kSSLSessionOptionBreakOnServerAuth, true);
+    OSStatus r1 = SSLSetIOFuncs(ssl, st_read, st_write);
+    OSStatus r2 = SSLSetConnection(ssl, (SSLConnectionRef)(intptr_t)fd);
+    if (r1 != noErr || r2 != noErr) printf("Unable to set IO for SSL\n");
+}
+size_t st_ssl_read(SSLContextRef ssl, void *data, size_t len)
+{
+    size_t processed;
+    int ret, fd;
+    OSErr sslret;
+    struct fd_set rfd;
+    struct timeval tval = { .tv_sec = 30, .tv_usec = 0 };
+    sslret = SSLGetConnection(ssl, (SSLConnectionRef*)&fd);
+    if (errSecSuccess != sslret) return sslret;
+read_retry_select:
+    FD_ZERO(&rfd);
+    FD_SET(fd, &rfd);
+    ret = select(fd + 1, &rfd, NULL, NULL, &tval);
+    if (ret < 0) {
+        if (EINTR == errno) goto read_retry_select;
+        return -1; // EAGAIN, ECONNRESET, etc
+    }
+    if (!FD_ISSET(fd, &rfd)) {
+        errno = EAGAIN;
+        return -1;
+    }
+    sslret = SSLRead(ssl, data, len, &processed);
+    printf("st_ssl_read: %lu bytes returning %d processed %lu\n", len, sslret,
+processed);
+    if (errSecSuccess == sslret) return processed;
+    return sslret;
+}
+size_t st_ssl_write(SSLContextRef ssl, const char *data, size_t len)
+{
+    size_t processed;
+    OSErr ret = SSLWrite(ssl, data, len, &processed);
+    printf("st_ssl_write: %lu bytes returning %d\n", len, ret);
+    if (errSecSuccess != ret) return ret;
+    return processed;
+}
+#endif
+
 uint32_t
 RTMP_GetTime()
 {
