@@ -153,6 +153,8 @@ static int clk_tck;
 #endif
 
 #ifdef USE_SECURETRANSPORT
+#include <pthread.h>
+static pthread_mutex_t ssl_mutex = PTHREAD_MUTEX_INITIALIZER;
 static OSStatus st_read(SSLConnectionRef cxn, void *data, size_t *dataLength)
 {
     int fd = (int)cxn, totalRead = 0, toRead = *dataLength;
@@ -224,7 +226,9 @@ read_retry_select:
         errno = EAGAIN;
         return -1;
     }
+    pthread_mutex_lock(&ssl_mutex);
     sslret = SSLRead(ssl, data, len, &processed);
+    pthread_mutex_unlock(&ssl_mutex);
     printf("st_ssl_read: %lu bytes returning %d processed %lu\n", len, sslret,
 processed);
     if (errSecSuccess == sslret) return processed;
@@ -233,7 +237,9 @@ processed);
 size_t st_ssl_write(SSLContextRef ssl, const char *data, size_t len)
 {
     size_t processed;
+    pthread_mutex_lock(&ssl_mutex);
     OSErr ret = SSLWrite(ssl, data, len, &processed);
+    pthread_mutex_unlock(&ssl_mutex);
     printf("st_ssl_write: %lu bytes returning %d\n", len, ret);
     if (errSecSuccess != ret) return ret;
     return processed;
