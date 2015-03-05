@@ -161,7 +161,6 @@ static OSStatus st_read(SSLConnectionRef cxn, void *data, size_t *dataLength)
     *dataLength = 0;
     while (toRead > 0) {
         int ret = read(fd, data, toRead);
-        printf("SecureTransport st_read %d ret %d\n", toRead, ret);
         if (ret <= 0) {
             if (!ret) return errSecIO; // EOF
             switch (errno) {
@@ -229,8 +228,6 @@ read_retry_select:
     pthread_mutex_lock(&ssl_mutex);
     sslret = SSLRead(ssl, data, len, &processed);
     pthread_mutex_unlock(&ssl_mutex);
-    printf("st_ssl_read: %lu bytes returning %d processed %lu\n", len, sslret,
-processed);
     if (errSecSuccess == sslret) return processed;
     return sslret;
 }
@@ -240,7 +237,6 @@ size_t st_ssl_write(SSLContextRef ssl, const char *data, size_t len)
     pthread_mutex_lock(&ssl_mutex);
     OSErr ret = SSLWrite(ssl, data, len, &processed);
     pthread_mutex_unlock(&ssl_mutex);
-    printf("st_ssl_write: %lu bytes returning %d\n", len, ret);
     if (errSecSuccess != ret) return ret;
     return processed;
 }
